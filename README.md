@@ -1,5 +1,5 @@
 Using:
-- HC-SR501 
+- HC-SR04 
 - Arduino Uno R3
 - 16x2 QAPASS LCD
 
