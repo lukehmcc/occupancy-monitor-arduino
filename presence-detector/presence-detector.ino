@@ -1,12 +1,12 @@
 #include <NewPing.h>
 //Defining where the components are attached
 #define TRIG_0 12
-#define TRIG_1 7
 #define ECHO_0 13
+#define TRIG_1 7
 #define ECHO_1 8
 
 #define iterations 5 //Number of readings in the calibration stage
-#define MAX_DISTANCE 300 // Maximum distance (in cm) for the sensors to try to read.
+#define MAX_DISTANCE 500 // Maximum distance (in cm) for the sensors to try to read.
 #define DEFAULT_DISTANCE 45 // Default distance (in cm) is only used if calibration fails.
 #define MIN_DISTANCE 15 // Minimum distance (in cm) for calibrated threshold.
 
@@ -27,8 +27,8 @@ NewPing sonar[2] = {   // Sensor object array.
 
 void setup() {
   Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
-  pinMode(2, OUTPUT); pinMode(5, OUTPUT); pinMode(A0, OUTPUT); pinMode(A3, OUTPUT); pinMode(11, OUTPUT);
-  digitalWrite(2, HIGH); digitalWrite(5, LOW); digitalWrite(A0, HIGH); digitalWrite(A3, LOW); digitalWrite(11, LOW);
+  // pinMode(2, OUTPUT); pinMode(5, OUTPUT); pinMode(A0, OUTPUT); pinMode(A3, OUTPUT); pinMode(11, OUTPUT);
+  // digitalWrite(2, HIGH); digitalWrite(5, LOW); digitalWrite(A0, HIGH); digitalWrite(A3, LOW); digitalWrite(11, LOW);
   Serial.println("Calibrating...");
   delay(1500);
   for (int a = 0; a < iterations; a++) {
@@ -67,13 +67,20 @@ void loop() {
   Serial.println(distance_0);
   Serial.print("Distance 1: ");
   Serial.println(distance_1);
+
   
   // if sensor0 is triggered, wait and see if sensor1 is triggered for 8 cycles
+  // if it is, that is an entry
   if (distance_0 < calibrate_0 && distance_0 > 0) {
     if (prev_blocked0 == false) {
+      Serial.println("TRIGGERED ENTRY CHECK");
       // now check to see if sensor1 is triggered a couple times
       for (int i = 0; i < 20; i++){
         distance_1 = sonar[1].ping_cm();
+        Serial.print("Distance 0: ");
+        Serial.println(distance_0);
+        Serial.print("Distance 1: ");
+        Serial.println(distance_1);
         if (distance_1 < calibrate_1 && distance_1 > 0){
           count++;
           delay(1000);
@@ -87,19 +94,24 @@ void loop() {
     prev_blocked0 = false;
   }
   
-
   // if sensor1 is triggered, wait and see if sensor0 is triggered for 8 cycles
+  // if it is, that is an exit
   if (distance_1 < calibrate_1 && distance_1 > 0) {
     if (prev_blocked1 == false) {
+      Serial.println("TRIGGERED EXIT CHECK");
       // now check to see if sensor1 is triggered a couple times
       for (int i = 0; i < 20; i++){
-        distance_0 = sonar[0].ping_cm();
+        distance_0 = sonar[1].ping_cm();
+        Serial.print("Distance 0: ");
+        Serial.println(distance_0);
+        Serial.print("Distance 1: ");
+        Serial.println(distance_1);
         if (distance_0 < calibrate_0 && distance_0 > 0){
           if (count > 0){
             count--;
-            delay(1000);
-            break;
           }
+          delay(1000);
+          break;
         }
         delay(40);
       }
