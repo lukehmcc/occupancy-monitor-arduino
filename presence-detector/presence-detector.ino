@@ -1,4 +1,6 @@
 #include <NewPing.h>
+#include <FastLED.h>
+
 //Defining where the components are attached
 #define TRIG_0 12
 #define ECHO_0 13
@@ -10,6 +12,16 @@
 #define DEFAULT_DISTANCE 45 // Default distance (in cm) is only used if calibration fails.
 #define MIN_DISTANCE 15 // Minimum distance (in cm) for calibrated threshold.
 
+#define DATA_PIN            3
+#define NUM_LEDS            3
+#define MAX_POWER_MILLIAMPS 5
+#define LED_TYPE            WS2812B
+#define COLOR_ORDER         GRB
+
+#define COUNT_LOGGING false
+#define LED_LOGGING true
+
+// sonar stuff
 float calibrate_0 = 0, calibrate_1 = 0; // The calibration in the setup() function will set these to appropriate values.
 float distance_0, distance_1; // These are the distances (in cm) that each of the Ultrasonic sensors read.
 int count = 0, limit = 20; //Occupancy limit should be set here: e.g. for maximum 8 people in the shop set 'limit = 8'.
@@ -20,10 +32,11 @@ NewPing sonar[2] = {   // Sensor object array.
   NewPing(TRIG_1, ECHO_1, MAX_DISTANCE)
 };
 
-/*
-   A quick note that the sonar.ping_cm() function returns 0 (cm) if the object is out of range / nothing is detected.
-   We will include a test to remove these erroneous zero readings later.
-*/
+// LED stuff
+int i;
+int j;
+// Define the array of leds
+CRGB leds[NUM_LEDS];
 
 void setup() {
   Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
@@ -52,7 +65,34 @@ void setup() {
   Serial.println(calibrate_0);
   Serial.print("Exit threshold set to: ");
   Serial.println(calibrate_1);
+
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+
   delay(1000);
+}
+
+void LED_strip_enable(){
+  if (LED_LOGGING){
+    Serial.println("HEYO I GOT CALLED");
+  }
+  // we need to have percent of leds in relation to limit
+  int num_led_limit_ratio = (NUM_LEDS/limit);
+  int lit_leds = (num_led_limit_ratio*count);
+  // then we should light up the matching lights
+  for (int i = 0; i < NUM_LEDS; i++){
+    leds[i] = CRGB::White;
+    // if occupancy == limit freak the f out
+    if (count == limit){
+      leds[i] = CRGB::Red;
+    }else{
+      // then if they are supposed to be lit, light them up
+      if (i<lit_leds){
+        leds[i] = CRGB::White;
+      }else{
+        leds[i] = CRGB::Black;
+      }
+    }
+  }
 }
 
 void loop() {
@@ -63,10 +103,12 @@ void loop() {
   delay(40); // Wait 40 milliseconds between pings. 29ms should be the shortest delay between pings.
   distance_1 = sonar[1].ping_cm();
   delay(40);
-  Serial.print("Distance 0: ");
-  Serial.println(distance_0);
-  Serial.print("Distance 1: ");
-  Serial.println(distance_1);
+  if (COUNT_LOGGING){
+    Serial.print("Distance 0: ");
+    Serial.println(distance_0);
+    Serial.print("Distance 1: ");
+    Serial.println(distance_1);
+  }
 
   
   // if sensor0 is triggered, wait and see if sensor1 is triggered for 8 cycles
@@ -77,12 +119,15 @@ void loop() {
       // now check to see if sensor1 is triggered a couple times
       for (int i = 0; i < 20; i++){
         distance_1 = sonar[1].ping_cm();
-        Serial.print("Distance 0: ");
-        Serial.println(distance_0);
-        Serial.print("Distance 1: ");
-        Serial.println(distance_1);
+        if (COUNT_LOGGING){
+          Serial.print("Distance 0: ");
+          Serial.println(distance_0);
+          Serial.print("Distance 1: ");
+          Serial.println(distance_1);
+        }
         if (distance_1 < calibrate_1 && distance_1 > 0){
           count++;
+          LED_strip_enable();
           delay(1000);
           break;
         }
@@ -102,13 +147,16 @@ void loop() {
       // now check to see if sensor1 is triggered a couple times
       for (int i = 0; i < 20; i++){
         distance_0 = sonar[1].ping_cm();
-        Serial.print("Distance 0: ");
-        Serial.println(distance_0);
-        Serial.print("Distance 1: ");
-        Serial.println(distance_1);
+        if (COUNT_LOGGING){
+          Serial.print("Distance 0: ");
+          Serial.println(distance_0);
+          Serial.print("Distance 1: ");
+          Serial.println(distance_1);
+        }
         if (distance_0 < calibrate_0 && distance_0 > 0){
           if (count > 0){
             count--;
+            LED_strip_enable();
           }
           delay(1000);
           break;
