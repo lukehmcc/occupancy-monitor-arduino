@@ -9,22 +9,23 @@
 
 #define iterations 5 //Number of readings in the calibration stage
 #define MAX_DISTANCE 500 // Maximum distance (in cm) for the sensors to try to read.
-#define DEFAULT_DISTANCE 45 // Default distance (in cm) is only used if calibration fails.
+#define DEFAULT_DISTANCE 15 // Default distance (in cm) is only used if calibration fails.
 #define MIN_DISTANCE 15 // Minimum distance (in cm) for calibrated threshold.
 
 #define DATA_PIN            3
-#define NUM_LEDS            3
+#define NUM_LEDS            11
 #define MAX_POWER_MILLIAMPS 5
 #define LED_TYPE            WS2812B
 #define COLOR_ORDER         GRB
+#define BRIGHTNESS          30
 
-#define COUNT_LOGGING false
+#define COUNT_LOGGING true
 #define LED_LOGGING true
 
 // sonar stuff
 float calibrate_0 = 0, calibrate_1 = 0; // The calibration in the setup() function will set these to appropriate values.
 float distance_0, distance_1; // These are the distances (in cm) that each of the Ultrasonic sensors read.
-int count = 0, limit = 20; //Occupancy limit should be set here: e.g. for maximum 8 people in the shop set 'limit = 8'.
+int count = 0, limit = 5; //Occupancy limit should be set here: e.g. for maximum 8 people in the shop set 'limit = 8'.
 bool prev_blocked0 = false, prev_blocked1 = false; //These booleans record whether the entry/exit was blocked on the previous reading of the sensor.
 
 NewPing sonar[2] = {   // Sensor object array.
@@ -33,15 +34,21 @@ NewPing sonar[2] = {   // Sensor object array.
 };
 
 // LED stuff
-int i;
-int j;
 // Define the array of leds
 CRGB leds[NUM_LEDS];
 
+void clear_LED_strip() {
+  for (int i = 0; i < NUM_LEDS; i++){
+    leds[i] = CRGB::Black;
+    FastLED.show();
+  }
+}
+
 void setup() {
   Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
-  // pinMode(2, OUTPUT); pinMode(5, OUTPUT); pinMode(A0, OUTPUT); pinMode(A3, OUTPUT); pinMode(11, OUTPUT);
-  // digitalWrite(2, HIGH); digitalWrite(5, LOW); digitalWrite(A0, HIGH); digitalWrite(A3, LOW); digitalWrite(11, LOW);
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+  FastLED.setBrightness(BRIGHTNESS);
+  clear_LED_strip();
   Serial.println("Calibrating...");
   delay(1500);
   for (int a = 0; a < iterations; a++) {
@@ -66,21 +73,20 @@ void setup() {
   Serial.print("Exit threshold set to: ");
   Serial.println(calibrate_1);
 
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
-
   delay(1000);
 }
 
 void LED_strip_enable(){
   if (LED_LOGGING){
-    Serial.println("HEYO I GOT CALLED");
+    Serial.println("Brigheness change called");
   }
   // we need to have percent of leds in relation to limit
   int num_led_limit_ratio = (NUM_LEDS/limit);
   int lit_leds = (num_led_limit_ratio*count);
   // then we should light up the matching lights
-  for (int i = 0; i < NUM_LEDS; i++){
+  for (int i = 0; i <= NUM_LEDS; i++){
     leds[i] = CRGB::White;
+    FastLED.show();
     // if occupancy == limit freak the f out
     if (count == limit){
       leds[i] = CRGB::Red;
