@@ -1,32 +1,46 @@
 #include <NewPing.h>
 #include <FastLED.h>
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
 
-//Defining where the components are attached
+// Defining Sonar sensor 
 #define TRIG_0 12
 #define ECHO_0 13
 #define TRIG_1 7
 #define ECHO_1 8
+// this is to flip the sonar readings
+// #define TRIG_0 7
+// #define ECHO_0 8
+// #define TRIG_1 12
+// #define ECHO_1 13
 
 #define iterations 5 //Number of readings in the calibration stage
 #define MAX_DISTANCE 500 // Maximum distance (in cm) for the sensors to try to read.
-#define DEFAULT_DISTANCE 15 // Default distance (in cm) is only used if calibration fails.
+#define DEFAULT_DISTANCE 45 // Default distance (in cm) is only used if calibration fails.
 #define MIN_DISTANCE 15 // Minimum distance (in cm) for calibrated threshold.
 
+// defining LED stuff
 #define DATA_PIN            3
 #define NUM_LEDS            11
 #define MAX_POWER_MILLIAMPS 5
-#define LED_TYPE            WS2812B
-#define COLOR_ORDER         GRB
-#define BRIGHTNESS          30
+#define BRIGHTNESS          15
 
+// define the LCD stuff
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+// defining logging
 #define COUNT_LOGGING true
 #define LED_LOGGING true
 
 // sonar stuff
-float calibrate_0 = 0, calibrate_1 = 0; // The calibration in the setup() function will set these to appropriate values.
-float distance_0, distance_1; // These are the distances (in cm) that each of the Ultrasonic sensors read.
-int count = 0, limit = 5; //Occupancy limit should be set here: e.g. for maximum 8 people in the shop set 'limit = 8'.
+int16_t calibrate_0 = 0, calibrate_1 = 0; // The calibration in the setup() function will set these to appropriate values.
+int16_t distance_0, distance_1; // These are the distances (in cm) that each of the Ultrasonic sensors read.
+int8_t count = 0, limit = 4; //Occupancy limit should be set here: e.g. for maximum 8 people in the shop set 'limit = 8'.
 bool prev_blocked0 = false, prev_blocked1 = false; //These booleans record whether the entry/exit was blocked on the previous reading of the sensor.
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 NewPing sonar[2] = {   // Sensor object array.
   NewPing(TRIG_0, ECHO_0, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
@@ -44,11 +58,33 @@ void clear_LED_strip() {
   }
 }
 
+void write_to_LCD() {
+  display.clearDisplay();
+  display.print("Count:");
+  display.print(count);
+  display.display();
+}
+
 void setup() {
+  // serial
   Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
+  // LED
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   clear_LED_strip();
+  // LCD 
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  delay(2000);
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.println("Sup nerd!");
+  display.display(); 
+  // Sonar
   Serial.println("Calibrating...");
   delay(1500);
   for (int a = 0; a < iterations; a++) {
@@ -85,8 +121,6 @@ void LED_strip_enable(){
   int lit_leds = (num_led_limit_ratio*count);
   // then we should light up the matching lights
   for (int i = 0; i <= NUM_LEDS; i++){
-    leds[i] = CRGB::White;
-    FastLED.show();
     // if occupancy == limit freak the f out
     if (count == limit){
       leds[i] = CRGB::Red;
@@ -99,16 +133,19 @@ void LED_strip_enable(){
       }
     }
   }
+  FastLED.show();
 }
+
+
 
 void loop() {
   Serial.print("Count: ");
   Serial.println(count);
   // inital ping
   distance_0 = sonar[0].ping_cm();
-  delay(40); // Wait 40 milliseconds between pings. 29ms should be the shortest delay between pings.
+  delay(50); // Wait 40 milliseconds between pings. 29ms should be the shortest delay between pings.
   distance_1 = sonar[1].ping_cm();
-  delay(40);
+  delay(50);
   if (COUNT_LOGGING){
     Serial.print("Distance 0: ");
     Serial.println(distance_0);
@@ -134,10 +171,11 @@ void loop() {
         if (distance_1 < calibrate_1 && distance_1 > 0){
           count++;
           LED_strip_enable();
-          delay(1000);
+          write_to_LCD();
+          delay(3000);
           break;
         }
-        delay(40);
+        delay(80);
       }
     }
     prev_blocked0 = true;
@@ -145,33 +183,34 @@ void loop() {
     prev_blocked0 = false;
   }
   
-  // if sensor1 is triggered, wait and see if sensor0 is triggered for 8 cycles
-  // if it is, that is an exit
-  if (distance_1 < calibrate_1 && distance_1 > 0) {
-    if (prev_blocked1 == false) {
-      Serial.println("TRIGGERED EXIT CHECK");
-      // now check to see if sensor1 is triggered a couple times
-      for (int i = 0; i < 20; i++){
-        distance_0 = sonar[1].ping_cm();
-        if (COUNT_LOGGING){
-          Serial.print("Distance 0: ");
-          Serial.println(distance_0);
-          Serial.print("Distance 1: ");
-          Serial.println(distance_1);
-        }
-        if (distance_0 < calibrate_0 && distance_0 > 0){
-          if (count > 0){
-            count--;
-            LED_strip_enable();
-          }
-          delay(1000);
-          break;
-        }
-        delay(40);
-      }
-    }
-    prev_blocked1 = true;
-  } else {
-    prev_blocked1 = false;
-  }
+  // // if sensor1 is triggered, wait and see if sensor0 is triggered for 8 cycles
+  // // if it is, that is an exit
+  // if (distance_1 < calibrate_1 && distance_1 > 0) {
+  //   if (prev_blocked1 == false) {
+  //     Serial.println("TRIGGERED EXIT CHECK");
+  //     // now check to see if sensor1 is triggered a couple times
+  //     for (int i = 0; i < 20; i++){
+  //       distance_0 = sonar[0].ping_cm();
+  //       if (COUNT_LOGGING){
+  //         Serial.print("Distance 0: ");
+  //         Serial.println(distance_0);
+  //         Serial.print("Distance 1: ");
+  //         Serial.println(distance_1);
+  //       }
+  //       if (distance_0 < calibrate_0 && distance_0 > 0){
+  //         if (count > 0){
+  //           count--;
+  //           LED_strip_enable();
+  //           write_to_LCD();
+  //         }
+  //         delay(3000);
+  //         break;
+  //       }
+  //       delay(80);
+  //     }
+  //   }
+  //   prev_blocked1 = true;
+  // } else {
+  //   prev_blocked1 = false;
+  // }
 }
