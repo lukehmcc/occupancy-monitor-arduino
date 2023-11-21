@@ -174,7 +174,7 @@ void loop() {
         count++;
         LED_strip_enable();
         write_to_LCD();
-        delay(3000);
+        delay(2000);
       }
       delay(80);
     }
@@ -199,7 +199,7 @@ void loop() {
           LED_strip_enable();
           write_to_LCD();
         }
-        delay(3000);
+        delay(2000);
       }
       delay(80);
     }
