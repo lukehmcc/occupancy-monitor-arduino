@@ -95,25 +95,26 @@ void setRoomCap()
   int potentiometerValue = analogRead(A0);
   float percent = map(potentiometerValue , 0, 1023, 0, 94);
   int numberOfPeople = round(percent);
-  limitt = (numberOfPeople / 2) + 3; 
-  directiont = (numberOfPeople <= 47) ? true : false; 
-  if (limit != limitt) {
+  new_limit = (numberOfPeople / 2) + 3; 
+  new_direction = (numberOfPeople <= 47) ? true : false; 
+  if (limit != new_limit) {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.print("Max Occupancy:");
-    display.print((numberOfPeople / 2) + 3);
+    display.print(new_limit);
     display.setCursor(4, 0);
     display.print("Direction:");
-    if (directiont){
+    if (new_direction){
       display.print("<--")
     } else {
       display.print("-->")
     }
     display.display();
     delay(100);
+    setRoomCap();
   }
-  limit = limitt;
-  direction = directiont;
+  limit = new_limit;
+  direction = new_direction;
 } 
 
 
@@ -184,8 +185,8 @@ void loop() {
   }
 
   
-  // if sensor0 is triggered, wait and see if sensor1 is triggered for 8 cycles
-  // if it is, that is an entry
+  // if sensor0 is triggered, wait and see if sensor1 is triggered for 20 cycles
+  // if it is, do a status check
   if (distances[0] < calibrate_0 && distances[0] > 0) {
     Serial.println("TRIGGERED ENTRY CHECK");
     // now check to see if sensor1 is triggered a couple times
@@ -198,7 +199,13 @@ void loop() {
         // Serial.println(calibrate_1);
       }
       if (distances[1] < calibrate_1 && distances[1] > 0){
-        count++;
+        if (direction) {
+          count++;
+        } else {
+          if (count > 0) {
+            count--;
+          }
+        }
         LED_strip_enable();
         write_to_LCD();
         delay(2000);
@@ -208,8 +215,8 @@ void loop() {
     }
   }
   
-  // if sensor1 is triggered, wait and see if sensor0 is triggered for 8 cycles
-  // if it is, that is an exit
+  // if sensor1 is triggered, wait and see if sensor0 is triggered for 20 cycles
+  // if it is, do a status check
   if (distances[1] < calibrate_1 && distances[1] > 0) {
     Serial.println("TRIGGERED EXIT CHECK");
     // now check to see if sensor1 is triggered a couple times
@@ -222,12 +229,16 @@ void loop() {
         // Serial.println(calibrate_0);
       }
       if (distances[0] < calibrate_0 && distances[0] > 0){
-        if (count > 0){
-          count--;
-          LED_strip_enable();
-          write_to_LCD();
-          break;
+        if (direction){
+          if (count > 0){
+            count--;
+          }
+        } else {
+          count++;
         }
+        LED_strip_enable();
+        write_to_LCD();
+        break;
         delay(2000);
       }
       delay(80);
