@@ -16,7 +16,7 @@
 
 // defining LED stuff
 #define DATA_PIN            3
-#define NUM_LEDS            11
+#define NUM_LEDS            21
 #define BRIGHTNESS          15
 
 // define the LCD stuff
@@ -86,35 +86,46 @@ void write_to_LCD() {
   display.clearDisplay();
   display.setCursor(0, 0);
   display.print("Count:");
-  display.print(count);
+  display.println(count);
+  display.print("Limit:");
+  display.println(limit);
+  display.print("Dir: ");
+  if (direction){
+      display.print("<--");
+    } else {
+      display.print("-->");
+    }
   display.display();
 }
 
-void setRoomCap()
-{
+void setRoomCap(){
   int potentiometerValue = analogRead(A0);
   float percent = map(potentiometerValue , 0, 1023, 0, 94);
   int numberOfPeople = round(percent);
-  new_limit = (numberOfPeople / 2) + 3; 
-  new_direction = (numberOfPeople <= 47) ? true : false; 
+  int new_limit = 3;
+  if (numberOfPeople <= 47) {
+    int new_limit = (numberOfPeople) + 3; 
+  } else {
+    int new_limit = (numberOfPeople / 2) + 3; 
+  }
+  int new_direction = (numberOfPeople <= 47) ? true : false; 
   if (limit != new_limit) {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.print("Max Occupancy:");
     display.print(new_limit);
-    display.setCursor(4, 0);
-    display.print("Direction:");
+    display.setCursor(0, 12);
     if (new_direction){
-      display.print("<--")
+      display.print("<--");
     } else {
-      display.print("-->")
+      display.print("-->");
     }
     display.display();
-    delay(100);
+    delay(250);
+    limit = new_limit;
+    direction = new_direction;
     setRoomCap();
   }
-  limit = new_limit;
-  direction = new_direction;
 } 
 
 
@@ -253,6 +264,9 @@ void loop() {
     flash_c += 1;
   } 
   LED_strip_enable();
+
+  setRoomCap();
+  write_to_LCD();
 }
 
 
