@@ -16,12 +16,12 @@
 
 // defining LED stuff
 #define DATA_PIN            3
-#define NUM_LEDS            21
+#define NUM_LEDS            42
 #define BRIGHTNESS          15
 
 // define the LCD stuff
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels 
 
 // defining logging
 #define COUNT_LOGGING true
@@ -30,7 +30,7 @@
 // sonar stuff
 int16_t calibrate_0 = 0, calibrate_1 = 0; // The calibration in the setup() function will set these to appropriate values.
 int16_t distances[2]; // These are the distances (in cm) that each of the Ultrasonic sensors read.
-int8_t count = 0, limit = 3; //Occupancy limit should be set here: e.g. for maximum 8 people in the shop set 'limit = 8'.
+int8_t count = 0, limit = 10; //Occupancy limit should be set here: e.g. for maximum 8 people in the shop set 'limit = 8'.
 int8_t flash_c = 0; // counter for flashing at max cap
 bool flash_on = false; // decides if flashing is on or not.
 bool direction = false; // true flips direction
@@ -83,44 +83,45 @@ void LED_strip_enable(){
 }
 
 void write_to_LCD() {
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.print("Count:");
-  display.println(count);
-  display.print("Limit:");
-  display.println(limit);
-  display.print("Dir: ");
-  if (direction){
-      display.print("<--");
-    } else {
-      display.print("-->");
-    }
-  display.display();
+  // display.clearDisplay();
+  // display.setCursor(0, 0);
+  // display.print("Count:");
+  // display.println(count);
+  // display.print("Limit:");
+  // display.println(limit);
+  // display.print("Dir: ");
+  // if (direction){
+  //     display.print("<--");
+  //   } else {
+  //     display.print("-->");
+  //   }
+  // display.display();
 }
 
 void setRoomCap(){
   int potentiometerValue = analogRead(A0);
   float percent = map(potentiometerValue , 0, 1023, 0, 94);
   int numberOfPeople = round(percent);
-  int new_limit = 3;
-  if (numberOfPeople <= 47) {
-    int new_limit = (numberOfPeople) + 3; 
-  } else {
-    int new_limit = (numberOfPeople / 2) + 3; 
-  }
+  int new_limit = (numberOfPeople <= 47) ? (numberOfPeople) + 3 : (numberOfPeople / 2) + 3;
   int new_direction = (numberOfPeople <= 47) ? true : false; 
+  Serial.print("number of people: ");
+  Serial.println(numberOfPeople);
+  Serial.print("new limit: ");
+  Serial.println(new_limit);
   if (limit != new_limit) {
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.print("Max Occupancy:");
-    display.print(new_limit);
-    display.setCursor(0, 12);
+    display.print("Cap:");
+    display.println(new_limit);
     if (new_direction){
+      display.setCursor(0, 12);
       display.print("<--");
+      display.display();
     } else {
+      display.setCursor(0, 12);
       display.print("-->");
+      display.display();
     }
-    display.display();
     delay(250);
     limit = new_limit;
     direction = new_direction;
@@ -136,18 +137,19 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   clear_LED_strip();
-  // LCD 
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;);
-  }
-  delay(2000);
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 0);
-  display.println("Sup nerd!");
-  display.display(); 
+  // // LCD 
+  // if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+  //   Serial.println(F("SSD1306 allocation failed"));
+  //   for(;;);
+  // }
+  // delay(2000);
+  // display.clearDisplay();
+  // display.setTextSize(2);
+  // display.setTextColor(WHITE);
+  // display.setCursor(0, 0);
+  // display.println("Sup nerd!");
+  // display.display(); 
+
   // Sonar
   Serial.println("Calibrating...");
   delay(1500);
@@ -199,7 +201,7 @@ void loop() {
   // if sensor0 is triggered, wait and see if sensor1 is triggered for 20 cycles
   // if it is, do a status check
   if (distances[0] < calibrate_0 && distances[0] > 0) {
-    Serial.println("TRIGGERED ENTRY CHECK");
+    Serial.println("TRIGGERED STATUS CHECK");
     // now check to see if sensor1 is triggered a couple times
     for (int i = 0; i < 20; i++){
       distances[1] = sonar[1].ping_cm();
@@ -211,7 +213,9 @@ void loop() {
       }
       if (distances[1] < calibrate_1 && distances[1] > 0){
         if (direction) {
-          count++;
+          if (count < limit){
+            count++;
+          }
         } else {
           if (count > 0) {
             count--;
@@ -229,7 +233,7 @@ void loop() {
   // if sensor1 is triggered, wait and see if sensor0 is triggered for 20 cycles
   // if it is, do a status check
   if (distances[1] < calibrate_1 && distances[1] > 0) {
-    Serial.println("TRIGGERED EXIT CHECK");
+    Serial.println("TRIGGERED STATUS CHECK");
     // now check to see if sensor1 is triggered a couple times
     for (int i = 0; i < 20; i++){
       distances[0] = sonar[0].ping_cm();
@@ -245,7 +249,9 @@ void loop() {
             count--;
           }
         } else {
-          count++;
+          if (count < limit){
+            count++;
+          }
         }
         LED_strip_enable();
         write_to_LCD();
