@@ -4,8 +4,8 @@
 #include <Adafruit_SSD1306.h>
 
 // Defining Sonar sensor 
-#define TRIG_0 12
-#define ECHO_0 13
+#define TRIG_0 9
+#define ECHO_0 10
 #define TRIG_1 7
 #define ECHO_1 8
 
@@ -44,7 +44,7 @@ NewPing sonar[2] = {   // Sensor object array.
 };
 
 // LED stuff
-// Define the array of leds
+Define the array of leds
 CRGB leds[NUM_LEDS];
 
 void clear_LED_strip() {
@@ -83,19 +83,19 @@ void LED_strip_enable(){
 }
 
 void write_to_LCD() {
-  // display.clearDisplay();
-  // display.setCursor(0, 0);
-  // display.print("Count:");
-  // display.println(count);
-  // display.print("Limit:");
-  // display.println(limit);
-  // display.print("Dir: ");
-  // if (direction){
-  //     display.print("<--");
-  //   } else {
-  //     display.print("-->");
-  //   }
-  // display.display();
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Count:");
+  display.println(count);
+  display.print("Limit:");
+  display.println(limit);
+  display.print("Dir: ");
+  if (direction){
+      display.print("<--");
+    } else {
+      display.print("-->");
+    }
+  display.display();
 }
 
 void setRoomCap(){
@@ -137,18 +137,18 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   clear_LED_strip();
-  // // LCD 
-  // if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-  //   Serial.println(F("SSD1306 allocation failed"));
-  //   for(;;);
-  // }
-  // delay(2000);
-  // display.clearDisplay();
-  // display.setTextSize(2);
-  // display.setTextColor(WHITE);
-  // display.setCursor(0, 0);
-  // display.println("Sup nerd!");
-  // display.display(); 
+  // LCD 
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  delay(2000);
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.println("Sup nerd!");
+  display.display(); 
 
   // Sonar
   Serial.println("Calibrating...");
@@ -170,10 +170,10 @@ void setup() {
     calibrate_1 = DEFAULT_DISTANCE;
   }
 
-  // Serial.print("Entry threshold set to: ");
-  // Serial.println(calibrate_0);
-  // Serial.print("Exit threshold set to: ");
-  // Serial.println(calibrate_1);
+  Serial.print("Entry threshold set to: ");
+  Serial.println(calibrate_0);
+  Serial.print("Exit threshold set to: ");
+  Serial.println(calibrate_1);
 
   delay(1000);
 }
